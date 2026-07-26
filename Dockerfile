@@ -8,5 +8,6 @@ RUN wget -q https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linu
 FROM alpine:3.19
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /usr/local/bin/xray /usr/local/bin/xray
+COPY config.json /etc/xray/config.json
 EXPOSE 8080
-CMD ["sh", "-c", "echo $XRAY_CONFIG | base64 -d > /tmp/config.json && xray -config /tmp/config.json"]
+CMD ["xray", "-config", "/etc/xray/config.json"]

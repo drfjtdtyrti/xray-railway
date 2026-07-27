@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultra Gaming VPN — Control Center</title>
+<style>
+  :root {
+    --bg:       #07080f;
+    --panel:    #0d0f1c;
+    --border:   #1a1f3a;
+    --neon:     #00f5d4;
+    --neon2:    #7b2fff;
+    --red:      #ff3860;
+    --yellow:   #ffd700;
+    --text:     #c8d0e8;
+    --muted:    #4a5270;
+    --font:     'Courier New', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    padding: 16px;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-bottom: 2px solid var(--neon);
+    border-radius: 8px 8px 0 0;
+    margin-bottom: 2px;
+  }
+  .logo { font-size: 22px; animation: pulse 2s infinite; }
+  @keyframes pulse {
+    0%,100% { text-shadow: 0 0 8px var(--neon); }
+    50%      { text-shadow: 0 0 20px var(--neon), 0 0 40px var(--neon2); }
+  }
+  h1 { font-size: 15px; letter-spacing: 3px; color: var(--neon); text-transform: uppercase; }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--neon);
+    margin-left: auto;
+    animation: blink 1.5s infinite;
+    box-shadow: 0 0 8px var(--neon);
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .status-label { font-size: 10px; color: var(--neon); letter-spacing: 1px; }
+
+  /* ── Grid ── */
+  .grid-top {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    margin-bottom: 2px;
+  }
+  .grid-mid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    margin-bottom: 2px;
+  }
+  .grid-bot {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 16px;
+  }
+  .panel-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .panel-value {
+    font-size: 28px;
+    font-weight: bold;
+    color: var(--neon);
+    text-shadow: 0 0 12px var(--neon);
+  }
+  .panel-sub {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* ── Gauge (CPU / RAM) ── */
+  .gauge-wrap { position: relative; width: 80px; height: 80px; margin: 6px auto 0; }
+  .gauge-wrap svg { width: 80px; height: 80px; }
+  .gauge-bg   { fill: none; stroke: var(--border); stroke-width: 6; }
+  .gauge-fill { fill: none; stroke-width: 6; stroke-linecap: round;
+                transition: stroke-dashoffset .6s ease; }
+  .gauge-cpu  { stroke: var(--neon); filter: drop-shadow(0 0 4px var(--neon)); }
+  .gauge-ram  { stroke: var(--neon2); filter: drop-shadow(0 0 4px var(--neon2)); }
+  .gauge-text {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 13px; font-weight: bold; text-align: center;
+  }
+
+  /* ── Bar ── */
+  .bar-outer {
+    background: var(--border);
+    border-radius: 4px;
+    height: 8px;
+    overflow: hidden;
+    margin: 8px 0 4px;
+  }
+  .bar-inner {
+    height: 100%;
+    border-radius: 4px;
+    transition: width .6s ease;
+    background: linear-gradient(90deg, var(--neon2), var(--neon));
+    box-shadow: 0 0 8px var(--neon);
+  }
+
+  /* ── Speed Graph ── */
+  .speed-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .speed-item { flex: 1; }
+  .speed-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-bottom: 4px; }
+  .speed-val   { font-size: 20px; color: var(--neon); font-weight: bold; }
+  .speed-unit  { font-size: 10px; color: var(--muted); margin-left: 2px; }
+
+  canvas.graph {
+    width: 100%;
+    height: 60px;
+    display: block;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: #090b14;
+    margin-top: 8px;
+  }
+
+  /* ── Uptime ── */
+  #uptime-val { font-size: 18px; color: var(--yellow); text-shadow: 0 0 8px var(--yellow); }
+
+  /* ── Configs ── */
+  .configs-section { padding: 16px; background: var(--panel); border: 1px solid var(--border); }
+  .configs-title {
+    font-size: 9px; letter-spacing: 3px; color: var(--muted);
+    text-transform: uppercase; margin-bottom: 14px;
+  }
+  .config-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #090b14;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    transition: border-color .2s;
+  }
+  .config-card:hover { border-color: var(--neon); }
+  .config-card.best {
+    border-color: var(--neon);
+    background: #0a0f1f;
+    box-shadow: 0 0 16px rgba(0,245,212,.08);
+  }
+  .config-badge {
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    white-space: nowrap;
+    letter-spacing: 1px;
+    font-weight: bold;
+  }
+  .badge-vless   { background: #0d2040; color: #4db8ff; border: 1px solid #1a4a80; }
+  .badge-vmess   { background: #1a0d30; color: #a78bfa; border: 1px solid #3d2060; }
+  .badge-trojan  { background: #1a0a0a; color: #ff6b6b; border: 1px solid #4a1010; }
+  .badge-best    { background: var(--neon); color: #000; }
+  .badge-cf      { background: #f38020; color: #000; }
+
+  .config-name { flex: 1; font-size: 12px; color: var(--text); }
+  .config-link {
+    font-size: 9px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 220px;
+  }
+  .copy-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--neon);
+    font-family: var(--font);
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .copy-btn:hover   { background: var(--neon); color: #000; }
+  .copy-btn.copied  { background: var(--neon); color: #000; border-color: var(--neon); }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 14px 0;
+  }
+  .best-label {
+    font-size: 9px;
+    color: var(--neon);
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  footer {
+    text-align: center;
+    font-size: 9px;
+    color: var(--muted);
+    padding: 12px;
+    letter-spacing: 2px;
+  }
+
+  @media (max-width: 600px) {
+    .grid-top { grid-template-columns: 1fr 1fr; }
+    .grid-mid  { grid-template-columns: 1fr; }
+    .config-link { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">⚡</span>
+  <h1>Ultra Gaming VPN — Control Center</h1>
+  <span class="status-label">LIVE</span>
+  <span class="status-dot"></span>
+</header>
+
+<!-- ── Row 1: CPU · RAM · Uptime ── -->
+<div class="grid-top">
+
+  <div class="panel">
+    <div class="panel-label">CPU Usage</div>
+    <div class="gauge-wrap">
+      <svg viewBox="0 0 80 80">
+        <circle class="gauge-bg"   cx="40" cy="40" r="32"
+          stroke-dasharray="201" stroke-dashoffset="0"
+          transform="rotate(-90 40 40)"/>
+        <circle id="cpu-arc" class="gauge-fill gauge-cpu" cx="40" cy="40" r="32"
+          stroke-dasharray="201" stroke-dashoffset="201"
+          transform="rotate(-90 40 40)"/>
+      </svg>
+      <div class="gauge-text">
+        <span id="cpu-pct" style="color:var(--neon)">0%</span>
+      </div>
+    </div>
+    <div class="panel-sub" style="text-align:center;margin-top:6px" id="cpu-sub">—</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-label">RAM Usage</div>
+    <div class="gauge-wrap">
+      <svg viewBox="0 0 80 80">
+        <circle class="gauge-bg"   cx="40" cy="40" r="32"
+          stroke-dasharray="201" stroke-dashoffset="0"
+          transform="rotate(-90 40 40)"/>
+        <circle id="ram-arc" class="gauge-fill gauge-ram" cx="40" cy="40" r="32"
+          stroke-dasharray="201" stroke-dashoffset="201"
+          transform="rotate(-90 40 40)"/>
+      </svg>
+      <div class="gauge-text">
+        <span id="ram-pct" style="color:var(--neon2)">0%</span>
+      </div>
+    </div>
+    <div class="panel-sub" style="text-align:center;margin-top:6px" id="ram-sub">—</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-label">System Uptime</div>
+    <div style="margin-top:16px">
+      <div id="uptime-val">—</div>
+      <div class="panel-sub" style="margin-top:12px">Total Traffic</div>
+      <div style="margin-top:4px;font-size:12px">
+        <span style="color:var(--neon)">↓ <span id="rx-total">0</span> MB</span>
+        <span style="color:var(--muted);margin:0 6px">/</span>
+        <span style="color:var(--neon2)">↑ <span id="tx-total">0</span> MB</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Row 2: Network Speed · Live Graph ── -->
+<div class="grid-mid">
+
+  <div class="panel">
+    <div class="panel-label">Network Speed</div>
+    <div class="speed-row">
+      <div class="speed-item">
+        <div class="speed-label">↓ DOWNLOAD</div>
+        <div class="speed-val" id="rx-speed">0<span class="speed-unit">KB/s</span></div>
+      </div>
+      <div class="speed-item">
+        <div class="speed-label">↑ UPLOAD</div>
+        <div class="speed-val" id="tx-speed">0<span class="speed-unit">KB/s</span></div>
+      </div>
+    </div>
+    <canvas id="net-graph" class="graph"></canvas>
+  </div>
+
+  <div class="panel">
+    <div class="panel-label">Memory Pressure</div>
+    <div style="margin-top:8px">
+      <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">
+        <span>Used</span><span id="ram-used-label">—</span>
+      </div>
+      <div class="bar-outer"><div class="bar-inner" id="ram-bar" style="width:0%"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:8px;margin-bottom:2px">
+        <span>Free</span><span id="ram-free-label">—</span>
+      </div>
+      <div style="font-size:10px;margin-top:2px;color:var(--muted)">
+        Total: <span id="ram-total-label" style="color:var(--text)">—</span>
+      </div>
+    </div>
+
+    <div style="margin-top:20px">
+      <div class="panel-label">CPU Load</div>
+      <div class="bar-outer"><div class="bar-inner" id="cpu-bar" style="width:0%;background:linear-gradient(90deg,var(--neon),#00a896)"></div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Row 3: Configs ── -->
+<div class="grid-bot">
+  <div class="configs-section">
+    <div class="configs-title">Connection Configs — All Protocols</div>
+
+    <div id="config-list"></div>
+
+    <div class="divider"></div>
+    <div class="best-label">⚡ Best Gaming Config (Lowest Latency)</div>
+    <div id="best-config"></div>
+
+    <div class="divider"></div>
+    <div class="best-label">☁ Cloudflare Worker Variants</div>
+    <div id="cf-configs"></div>
+  </div>
+</div>
+
+<footer>ULTRA GAMING VPN · ONYX BUILD · ALL SYSTEMS NOMINAL</footer>
+
+<script>
+// ── Config Data ───────────────────────────────────────────────────────────────
+
+const RAILWAY = "xray-core-production-f4b1.up.railway.app";
+const CF      = "gaming2.brawlstarsalireza001.workers.dev";
+const UUID    = "b684dabf-bc91-46bd-bb7e-477bfdc5ca01";
+const TROJAN_PASS = "gaming2025ultra";
+
+const configs = [
+  {
+    name: "VLESS + WebSocket",
+    badge: "VLESS", badgeClass: "badge-vless",
+    link: `vless://${UUID}@${RAILWAY}:443?encryption=none&security=tls&sni=${RAILWAY}&type=ws&path=%2Fvless&host=${RAILWAY}#Gaming-VLESS-WS`,
+  },
+  {
+    name: "VMess + WebSocket",
+    badge: "VMESS", badgeClass: "badge-vmess",
+    link: `vmess://${btoa(JSON.stringify({v:"2",ps:"Gaming-VMess-WS",add:RAILWAY,port:"443",id:UUID,aid:"0",scy:"auto",net:"ws",type:"none",host:RAILWAY,path:"/vmess",tls:"tls",sni:RAILWAY,alpn:""}))}`,
+  },
+  {
+    name: "Trojan + WebSocket",
+    badge: "TROJAN", badgeClass: "badge-trojan",
+    link: `trojan://${TROJAN_PASS}@${RAILWAY}:443?security=tls&sni=${RAILWAY}&type=ws&path=%2Ftrojan&host=${RAILWAY}#Gaming-Trojan-WS`,
+  },
+  {
+    name: "VLESS + SplitHTTP",
+    badge: "SPLIT", badgeClass: "badge-vless",
+    link: `vless://${UUID}@${RAILWAY}:443?encryption=none&security=tls&sni=${RAILWAY}&type=splithttp&path=%2Fsplit&host=${RAILWAY}#Gaming-SplitHTTP`,
+  },
+];
+
+const bestConfig = {
+  name: "VLESS + HTTPUpgrade (Ultra Gaming)",
+  badge: "⚡ BEST", badgeClass: "badge-best",
+  link: `vless://${UUID}@${RAILWAY}:443?encryption=none&security=tls&sni=${RAILWAY}&type=httpupgrade&path=%2Fupgrade&host=${RAILWAY}#Gaming-Ultra-Direct`,
+};
+
+const cfConfigs = [
+  {
+    name: "VLESS + WS via CF Worker",
+    badge: "CF+WS", badgeClass: "badge-cf",
+    link: `vless://${UUID}@${CF}:443?encryption=none&security=tls&sni=${CF}&type=ws&path=%2Fvless&host=${CF}#Gaming-CF-WS`,
+  },
+  {
+    name: "VLESS + HTTPUpgrade via CF Worker",
+    badge: "CF+HTTP", badgeClass: "badge-cf",
+    link: `vless://${UUID}@${CF}:443?encryption=none&security=tls&sni=${CF}&type=httpupgrade&path=%2Fupgrade&host=${CF}#Gaming-CF-Ultra`,
+  },
+];
+
+// ── Render Configs ────────────────────────────────────────────────────────────
+
+function renderCard(cfg, extra="") {
+  const shortLink = cfg.link.length > 60 ? cfg.link.slice(0,58)+"…" : cfg.link;
+  return `
+  <div class="config-card ${extra}">
+    <span class="config-badge ${cfg.badgeClass}">${cfg.badge}</span>
+    <div>
+      <div class="config-name">${cfg.name}</div>
+      <div class="config-link">${shortLink}</div>
+    </div>
+    <button class="copy-btn" onclick="copyConfig(this, \`${cfg.link.replace(/`/g,'\\`')}\`)">COPY</button>
+  </div>`;
+}
+
+document.getElementById("config-list").innerHTML = configs.map(c => renderCard(c)).join("");
+document.getElementById("best-config").innerHTML = renderCard(bestConfig, "best");
+document.getElementById("cf-configs").innerHTML  = cfConfigs.map(c => renderCard(c)).join("");
+
+function copyConfig(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = "COPIED!";
+    btn.classList.add("copied");
+    setTimeout(() => { btn.textContent = "COPY"; btn.classList.remove("copied"); }, 2000);
+  });
+}
+
+// ── Graph ─────────────────────────────────────────────────────────────────────
+
+const canvas  = document.getElementById("net-graph");
+const ctx     = canvas.getContext("2d");
+const RX_BUF  = [];
+const TX_BUF  = [];
+const MAX_PTS = 60;
+
+function resizeCanvas() {
+  canvas.width  = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+}
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
+
+function drawGraph() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const allVals = [...RX_BUF, ...TX_BUF, 1];
+  const maxVal  = Math.max(...allVals);
+
+  function drawLine(buf, color) {
+    if (buf.length < 2) return;
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = 1.5;
+    ctx.shadowColor = color;
+    ctx.shadowBlur  = 4;
+    buf.forEach((v, i) => {
+      const x = (i / (MAX_PTS - 1)) * W;
+      const y = H - (v / maxVal) * (H - 4) - 2;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  // Grid lines
+  ctx.strokeStyle = "#1a1f3a";
+  ctx.lineWidth   = 0.5;
+  for (let i = 1; i < 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(0, (H / 4) * i);
+    ctx.lineTo(W, (H / 4) * i);
+    ctx.stroke();
+  }
+
+  drawLine(RX_BUF, "#00f5d4");
+  drawLine(TX_BUF, "#7b2fff");
+}
+
+// ── Stats SSE ─────────────────────────────────────────────────────────────────
+
+function fmtSpeed(kb) {
+  if (kb >= 1024) return (kb/1024).toFixed(1) + "<span class='speed-unit'>MB/s</span>";
+  return Math.round(kb) + "<span class='speed-unit'>KB/s</span>";
+}
+
+function setGauge(arcId, pct) {
+  const circ = 201;
+  const offset = circ - (pct / 100) * circ;
+  document.getElementById(arcId).style.strokeDashoffset = offset;
+}
+
+function applyStats(s) {
+  // CPU
+  document.getElementById("cpu-pct").textContent = s.cpu + "%";
+  document.getElementById("cpu-sub").textContent  = `load: ${s.cpu}%`;
+  document.getElementById("cpu-bar").style.width  = s.cpu + "%";
+  setGauge("cpu-arc", s.cpu);
+
+  // RAM
+  const m = s.memory;
+  document.getElementById("ram-pct").textContent       = m.percent + "%";
+  document.getElementById("ram-bar").style.width        = m.percent + "%";
+  document.getElementById("ram-used-label").textContent = m.used_mb + " MB";
+  document.getElementById("ram-free-label").textContent = m.free_mb + " MB";
+  document.getElementById("ram-total-label").textContent= m.total_mb + " MB";
+  document.getElementById("ram-sub").textContent        = `${m.used_mb} / ${m.total_mb} MB`;
+  setGauge("ram-arc", m.percent);
+
+  // Network
+  const n = s.network;
+  document.getElementById("rx-speed").innerHTML = fmtSpeed(n.rx_speed_kb);
+  document.getElementById("tx-speed").innerHTML = fmtSpeed(n.tx_speed_kb);
+  document.getElementById("rx-total").textContent = n.rx_total_mb;
+  document.getElementById("tx-total").textContent = n.tx_total_mb;
+
+  RX_BUF.push(n.rx_speed_kb);
+  TX_BUF.push(n.tx_speed_kb);
+  if (RX_BUF.length > MAX_PTS) RX_BUF.shift();
+  if (TX_BUF.length > MAX_PTS) TX_BUF.shift();
+  drawGraph();
+
+  // Uptime
+  document.getElementById("uptime-val").textContent = s.uptime;
+}
+
+function connect() {
+  const es = new EventSource("/api/stream");
+  es.onmessage = e => { try { applyStats(JSON.parse(e.data)); } catch(_){} };
+  es.onerror   = () => { es.close(); setTimeout(connect, 3000); };
+}
+
+// Fallback polling if SSE fails
+function poll() {
+  fetch("/api/stats")
+    .then(r => r.json())
+    .then(applyStats)
+    .catch(() => {});
+}
+
+connect();
+setInterval(poll, 10000); // backup poll every 10s
+</script>
+</body>
+</html>
